@@ -114,7 +114,7 @@ def track_ball_kinematics(video, is_left):
 
     #TODO: add logic to actually find where ball leaves thrower's hand, regardless of frame number
     #loop through until frame reached where ball has left thrower's hand
-    for i in range(0, 99):
+    for i in range(0, 52):
         success, frame = video.read()
         frame_num +=1
         # write image so detect.py can find it
@@ -356,10 +356,10 @@ if __name__ == '__main__':
    #read in left and right videos
    video_left = cv2.VideoCapture('Thesis_Data_Videos_Left/throwfar_2_292_behind_shot_on_160_left.MP4')
    video_right = cv2.VideoCapture('Thesis_Data_Videos_Right/throwfar_2_292_behind_shot_on_160_right.MP4')
-   video_left = cv2.VideoCapture('Thesis_Data_Videos_Test/throwclose_2_414_behind_shot_on_190_left.MP4')
-   video_right = cv2.VideoCapture('Thesis_Data_Videos_Test/throwclose_2_414_behind_shot_on_190_right.MP4')
-   video_left = cv2.VideoCapture('Thesis_Data_Videos_Test/throwfar_1_24_behind_shot_on_190_left.MP4')
-   video_right = cv2.VideoCapture('Thesis_Data_Videos_Test/throwfar_1_24_behind_shot_on_190_right.MP4')
+   #video_left = cv2.VideoCapture('Thesis_Data_Videos_Test/throwclose_2_414_behind_shot_on_190_left.MP4')
+   #video_right = cv2.VideoCapture('Thesis_Data_Videos_Test/throwclose_2_414_behind_shot_on_190_right.MP4')
+   #video_left = cv2.VideoCapture('Thesis_Data_Videos_Test/throwfar_1_24_behind_shot_on_190_left.MP4')
+   #video_right = cv2.VideoCapture('Thesis_Data_Videos_Test/throwfar_1_24_behind_shot_on_190_right.MP4')
 
    #make sure videos can be opened, then call track_ball
    if not video_left.isOpened() or not video_right.isOpened():

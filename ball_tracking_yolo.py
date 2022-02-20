@@ -36,7 +36,8 @@ def yolo_label_to_pixel_coords(line, frame):
     y = int(float(line[2]) * h)
     width = float(line[3]) * w
     height = float(line[4]) * h
-    return x,y,width,height
+    confidence = float(line[5])
+    return x,y,width,height, confidence
 
 #helper function to predict position of shot put in subsequent frame based on info from current frame
 def predict_position(pos, vel, accel):
@@ -104,7 +105,7 @@ def track_ball_kinematics(video, is_left):
     frame_num = 0
     has_landed = False
     success, frame = video.read()
-    out = cv2.VideoWriter('ball_candidates_each_frame_from_beginning_yolo_kinematics_landing_LEFT_24.avi', cv2.VideoWriter_fourcc(*'DIVX'), 15,
+    out = cv2.VideoWriter('ball_tracking_292_conf_thresh_1/2.avi', cv2.VideoWriter_fourcc(*'DIVX'), 15,
                           (frame.shape[1], frame.shape[0]))
     # undistorting image based on camera calibration
     frame = undistort(frame, is_left)
@@ -119,8 +120,7 @@ def track_ball_kinematics(video, is_left):
         frame_num +=1
         # write image so detect.py can find it
         cv2.imwrite("current_frame.png", frame)
-    #cv2.imshow('f', frame)
-    #cv2.waitKey(0)
+
 
     #initialize flight count to keep track of how long ball in air, initalize ball_info at given frame
     flight_count = 0
@@ -128,7 +128,7 @@ def track_ball_kinematics(video, is_left):
     ball_info[frame_num] = {}
 
     # loop through rest of frames in video for tracking
-    while success and frame is not None and landed_count < 10:
+    while success and frame is not None and frame_num < 110:
         print("frame num = ")
         print(frame_num)
         if has_landed is True: landed_count+=1
@@ -149,10 +149,12 @@ def track_ball_kinematics(video, is_left):
 
         #call detect.py using weights from custom trained yolov3 model
         os.system("python3.7 /Users/ashley20/PycharmProjects/ThesisCameraCalibration/yolov3/detect.py"
-                  " --weights '/Users/ashley20/PycharmProjects/ThesisCameraCalibration/yolov3/last_aug.pt'"
+                  " --weights '/Users/ashley20/PycharmProjects/ThesisCameraCalibration/last_aug_final.pt'"
                   " --source /Users/ashley20/PycharmProjects/ThesisCameraCalibration/current_frame.png"
                   " --save-txt"
-                  " --exist-ok")
+                  " --save-conf"
+                  " --exist-ok"
+                  )
 
 
         #open txt file of labels that yolov3 creates during detect.py
@@ -162,7 +164,7 @@ def track_ball_kinematics(video, is_left):
                 for line in num_detections_file:
                     line=line.split()
                     num_detections = int(line[0])
-
+            print("num detections: ", num_detections)
             #if label file is empty, this means no shot put candidates, so prediction automatically becomes point
             if num_detections == 0:
                 #print("no detections found")
@@ -200,7 +202,7 @@ def track_ball_kinematics(video, is_left):
                 if flight_count==0:
                     for line in label_file:
                         line = line.split()
-                        x,y,width,height = yolo_label_to_pixel_coords(line, frame)
+                        x,y,width,height, confidence = yolo_label_to_pixel_coords(line, frame)
                         b['det_pos_x'] = x
                         b['det_pos_y'] = y
                         b['is_pred'] = False
@@ -224,9 +226,13 @@ def track_ball_kinematics(video, is_left):
                     all_dists = {}
                     for line in label_file:
                         line = line.split()
-                        x,y,width,height = yolo_label_to_pixel_coords(line, frame)
+                        x,y,width,height, confidence = yolo_label_to_pixel_coords(line, frame)
                         dist = dist_formula((x,y), (pred_ball_x, pred_ball_y))
-                        all_dists[(x,y)] = dist
+                        score = dist +10*(1-confidence)
+                        print("dist = ", dist)
+                        print("conf = ", confidence)
+                        print("score = ", score)
+                        all_dists[(x,y)] = score
                     min_key = min(all_dists, key=all_dists.get)
 
                     #if min distance falls within threshold, take it as the ball; if not, then take the prediction
@@ -254,7 +260,7 @@ def track_ball_kinematics(video, is_left):
                         b['bb_width'] = None
                         b['bb_height'] = None
 
-                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), 5)
+                    cv2.circle(frame, (int(b['det_pos_x']), int(b['det_pos_y'])), 5, (0, 255, 0), 5)
 
                     if flight_count == 0:
                         b['is_pred'] = False
@@ -324,6 +330,7 @@ def track_ball_kinematics(video, is_left):
                 cv2.putText(frame, "LANDED!", (50,1000), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
                 cv2.circle(frame, (int(ball_info[frame_num]['det_pos_x']), int(ball_info[frame_num]['det_pos_y'])), 20, (0,0,255), -1)
                 has_landed = True
+                cv2.imwrite('landed_img.png', frame)
 
                 #now that landing frame has been found, try to interpolate exact landing pixel coordinate
                 #first figure out time step to get from current velocity to 0 velocity
@@ -342,6 +349,18 @@ def track_ball_kinematics(video, is_left):
                 cv2.putText(frame, "Predicted Landing Point: (" + str(pred_landing_x) + ', ' + str(pred_landing_y) + ')', (50, 1100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
         #write frame to video, reset next frame, increment flight count and frame number
+        cv2.circle(frame, (int(b['det_pos_x']), int(b['det_pos_y'])), 5, (255, 255, 0), 5)
+        # if frame_num > 53:
+        #     print(b['pred_pos_x'])
+        #     print(b['pred_pos_y'])
+        #     print(b['det_pos_x'])
+        #     print(b['det_pos_y'])
+        #     print(b['vel_x'])
+        #     print(b['vel_y'])
+        #     print(b['accel_x'])
+        #     print(b['accel_y'])
+        #     cv2.imshow('f', frame)
+        #     cv2.waitKey(0)
         out.write(frame)
         ret, frame = video.read()
         flight_count+=1

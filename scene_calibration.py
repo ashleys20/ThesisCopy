@@ -4,15 +4,11 @@ import numpy as np
 from camera_calibration import undistort
 
 #open first frame of left and right video
-
 #click for shot box center and corner coordinates
-
 #click corners of throwing sector
-
 #click other corresponding points
 
 #construct fundamental matrix
-
 #construct essential matrix
 
 
@@ -217,10 +213,6 @@ def click_scene_coordinates(video_left, video_right):
         print(eight_coords_right)
 
         return stop_box_coords_center_left, stop_box_coords_center_right, stop_box_coords_corners_left, stop_box_coords_corners_right, outer_sector_coords_left, outer_sector_coords_right, eight_coords_left, eight_coords_right
-
-
-
-
 
 if __name__ == '__main__':
     print("in calibrate scene")

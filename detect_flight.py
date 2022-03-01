@@ -24,20 +24,36 @@ def intersection_area(bb_shotput, bb_thrower):
 # if a sports ball and person are both detected within the search window
 # AND sports ball bounding box does not overlap too closely or is not completely within human bounding box
 # then that is starting point for shot put flight
-def detect_flight(video, box_coords, isLeft):
+def detect_flight(video, stop_box_coords, sector_coords, isLeft):
 
     #initialize key variables
     shotput_in_flight = False
 
-    #we know coordinates of box upon calibration in the video, create search window above box for ball
-    search_window_top_left = (box_coords[0]-350, box_coords[1]-750)
-    search_window_bottom_right = (box_coords[0]+350, box_coords[1]+100)
+    #read first frame in video
+    success, frame = video.read()
+    frame = undistort(frame, isLeft)
+    height, width, _ = frame.shape
+
+    # we know coordinates of box upon calibration in the video, create search window above box for ball
+    if isLeft is True:
+        search_window_top_left = (sector_coords[0][0], int(sector_coords[0][1] - height*0.2))
+        search_window_bottom_right = (int(sector_coords[1][0] + width*0.2), stop_box_coords[1])
+    else:
+        search_window_top_left = (int(sector_coords[0][0]-width*0.2), int(sector_coords[0][1] - height*0.2))
+        search_window_bottom_right = (sector_coords[1][0], stop_box_coords[1])
+
     frame_num = 0
 
-    #read first frame in video
-    ret, frame = video.read()
+    # Testing Code
+    # cv2.circle(frame, sector_coords[0], 5, (255, 255, 0), 5)
+    # cv2.circle(frame, sector_coords[1], 5, (255, 255, 0), 5)
+    # cv2.circle(frame, stop_box_coords, 5, (255,255,0), 5)
+    # cv2.rectangle(frame, search_window_top_left, search_window_bottom_right, (255,0,0), 5)
+    # cv2.imshow("frame", frame)
+    # cv2.waitKey(0)
+
     #looping through frames until shot put is detected to be in flight or video ends
-    while shotput_in_flight is False and ret is True:
+    while shotput_in_flight is False and success is True:
         #first, undistort image based on camera calibration
         if isLeft:
             frame = undistort(frame, True)
@@ -53,16 +69,15 @@ def detect_flight(video, box_coords, isLeft):
                   " --source /Users/ashley20/PycharmProjects/ThesisCameraCalibration/currentdetectflightframe.png"
                   " --save-txt"
                   " --save-conf"
-                  " --view-img"
                   " --exist-ok"
                   )
 
         #TESTING CODE
         testframe = cv2.imread('/Users/ashley20/PycharmProjects/ThesisCameraCalibration/yolov3/runs/detect/exp/currentdetectflightframe.png')
-        cv2.rectangle(testframe, search_window_top_left, search_window_bottom_right,
-                      (255, 0, 0), 5)
-        cv2.imshow("test", testframe)
-        cv2.waitKey(0)
+        # cv2.rectangle(testframe, search_window_top_left, search_window_bottom_right,
+        #               (255, 0, 0), 5)
+        # cv2.imshow("test", testframe)
+        # cv2.waitKey(0)
 
         # open txt file of labels that yolov3 creates during detect.py
         with open(
@@ -175,24 +190,30 @@ def detect_flight(video, box_coords, isLeft):
                                 # cv2.circle(testframe, (bb_thrower['x2'], bb_thrower['y2']), 5, (255, 255, 0), 5)
                                 # cv2.imshow('f', testframe)
                                 # cv2.waitKey(0)
-                                return (int(sc[0]), int(sc[1]))
+                                cv2.destroyAllWindows()
+                                print(sc[2])
+                                print(sc[3])
+                                return (int(sc[0]), int(sc[1]), int(sc[2]), int(sc[3]))
 
         #increments frame number
         frame_num += 1
         #gets next frame
-        ret, frame = video.read()
+        success, frame = video.read()
 
     #if video ends and while loop exits, but never finds the flight of shot put
     if shotput_in_flight is False:
-        print("video ended before detecting shot put in flight")
+        print("video ended before detecting shot put in flight, exiting code")
         return None
+        exit()
 
 if __name__ == '__main__':
    print("in detect flight")
-   video = cv2.VideoCapture('Thesis_Data_Videos_Test/throwfar_1_24_behind_shot_on_190_left.MP4')
-   box_coords_left = (1050, 1200)
-   box_coords_right = (1005, 1250)
+   video = cv2.VideoCapture('Thesis_Data_Videos_Test/throwclose_2_414_behind_shot_on_190_left.MP4')
+   box_coords_left = (1109, 1223)
+   box_coords_right = (842, 915)
+   sector_coords_left = [(321,855),(1016,941)]
+   sector_coords_right = [(898,627), (1470,684)]
    if not video.isOpened():
        print("no video opened")
        exit()
-   detect_flight(video, box_coords_left, isLeft=True)
+   detect_flight(video, box_coords_left, sector_coords_left, isLeft=True)
